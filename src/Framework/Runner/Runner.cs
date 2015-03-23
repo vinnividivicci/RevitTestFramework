@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Xml;
 using System.Xml.Serialization;
 using Autodesk.RevitAddIns;
 using Dynamo.NUnit.Tests;
@@ -443,7 +444,7 @@ namespace RTF.Framework
                 var files = Directory.GetFiles(GetRevitAddinFolder());
                 foreach (var file in files)
                 {
-                    if (file.EndsWith(".addin", StringComparison.OrdinalIgnoreCase))
+                    if(shouldCopyAddin(file))
                     {
                         var fileName = Path.GetFileName(file);
                         File.Copy(file, Path.Combine(WorkingDirectory, fileName), true);
@@ -456,7 +457,7 @@ namespace RTF.Framework
                 var files = Directory.GetFiles(GetRevitUserAddinFolder());
                 foreach (var file in files)
                 {
-                    if (file.EndsWith(".addin", StringComparison.OrdinalIgnoreCase))
+                    if(shouldCopyAddin(file))
                     {
                         var fileName = Path.GetFileName(file);
                         File.Copy(file, Path.Combine(WorkingDirectory, fileName), true);
@@ -1265,6 +1266,48 @@ namespace RTF.Framework
             CopiedAddins.Clear();
         }
 
+        /// <summary>
+        /// Detect if any of the <Assembly></Assembly> nodes within the .addin file
+        /// start with a period ("."). If so, return false
+        /// </summary>
+        private bool shouldCopyAddin(string filePath)
+        {
+            if (filePath.EndsWith(".addin", StringComparison.OrdinalIgnoreCase))
+            {
+                // load the add-in as an XmlDocument.
+                XmlDocument doc = new XmlDocument();
+                try
+                {
+                    using (StreamReader sr = new StreamReader(filePath, true))
+                    {
+                        doc.Load(sr);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
+
+                // Load all the <Assembly> nodes in the .addin file.
+                XmlNodeList elementList = doc.GetElementsByTagName("Assembly");
+                foreach (XmlElement element in elementList)
+                {
+                    string assemblyPath = element.InnerText;
+                    // Check if the path starts with a period, meaning that it's a relative path and
+                    // we should ignore those addins since the DLL will not be visible from the working
+                    // path of the Runner.
+                    if (assemblyPath.StartsWith("."))
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
         #endregion
 
         #region private static methods

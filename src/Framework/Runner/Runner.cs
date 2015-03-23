@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Serialization;
 using Autodesk.RevitAddIns;
@@ -1292,10 +1293,11 @@ namespace RTF.Framework
                 foreach (XmlElement element in elementList)
                 {
                     string assemblyPath = element.InnerText;
-                    // Check if the path starts with a period, meaning that it's a relative path and
+                    // Check if the path does not match ^\w:\\ , meaning that it's a relative path and
                     // we should ignore those addins since the DLL will not be visible from the working
                     // path of the Runner.
-                    if (assemblyPath.StartsWith("."))
+                    Regex reg = new Regex(@"^\w:\\");
+                    if (!reg.IsMatch(assemblyPath))
                     {
                         return false;
                     }
